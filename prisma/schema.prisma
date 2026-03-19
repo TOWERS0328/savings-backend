@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model budgets {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String        @db.Uuid
+  category_id  String        @db.Uuid
+  amount_limit Decimal       @db.Decimal(12, 2)
+  period       budget_period @default(monthly)
+  created_at   DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?     @default(now()) @db.Timestamptz(6)
+  categories   categories    @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users        users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, category_id, period])
+}
+
+model calendar_events {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String        @db.Uuid
+  title           String        @db.VarChar(200)
+  amount          Decimal?      @db.Decimal(12, 2)
+  event_date      DateTime      @db.Date
+  status          event_status? @default(pending)
+  event_type      event_type?   @default(payment)
+  recurrent       Boolean?      @default(false)
+  recurrence_rule String?       @db.VarChar(50)
+  notes           String?
+  created_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  users           users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, event_date], map: "calendar_user_date_idx")
+}
+
+model categories {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String         @db.Uuid
+  name         String         @db.VarChar(100)
+  icon         String?        @default("tag") @db.VarChar(60)
+  color        String?        @default("#1D9E75") @db.VarChar(7)
+  type         category_type  @default(expense)
+  is_default   Boolean?       @default(false)
+  created_at   DateTime?      @default(now()) @db.Timestamptz(6)
+  budgets      budgets[]
+  users        users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transactions transactions[]
+
+  @@index([user_id], map: "categories_user_idx")
+}
+
+model financial_tips {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  message    String
+  category   String?   @default("general") @db.VarChar(50)
+  is_read    Boolean?  @default(false)
+  shown_at   DateTime? @default(now()) @db.Timestamptz(6)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model payment_methods {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String              @db.Uuid
+  name         String              @db.VarChar(100)
+  type         payment_method_type @default(cash)
+  created_at   DateTime?           @default(now()) @db.Timestamptz(6)
+  users        users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transactions transactions[]
+}
+
+model transactions {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String           @db.Uuid
+  category_id       String?          @db.Uuid
+  payment_method_id String?          @db.Uuid
+  type              transaction_type
+  amount            Decimal          @db.Decimal(12, 2)
+  establishment     String?          @db.VarChar(200)
+  description       String?
+  photo_url         String?
+  date              DateTime?        @default(now()) @db.Timestamptz(6)
+  created_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  categories        categories?      @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  payment_methods   payment_methods? @relation(fields: [payment_method_id], references: [id], onUpdate: NoAction)
+  users             users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([category_id], map: "transactions_category_idx")
+  @@index([user_id, date], map: "transactions_user_date_idx")
+  @@index([user_id, type], map: "transactions_user_type_idx")
+}
+
+model users {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String            @db.VarChar(150)
+  email             String            @unique @db.VarChar(255)
+  password_hash     String            @db.VarChar(255)
+  language          language          @default(es)
+  currency          String            @default("COP") @db.VarChar(10)
+  timezone          String?           @default("America/Bogota") @db.VarChar(60)
+  theme             String?           @default("default") @db.VarChar(50)
+  profile_photo_url String?
+  onboarding_done   Boolean?          @default(false)
+  calendar_config   String?           @db.VarChar(20)
+  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  budgets           budgets[]
+  calendar_events   calendar_events[]
+  categories        categories[]
+  financial_tips    financial_tips[]
+  payment_methods   payment_methods[]
+  transactions      transactions[]
+}
+
+enum budget_period {
+  daily
+  weekly
+  biweekly
+  monthly
+  annual
+}
+
+enum category_type {
+  income
+  expense
+  both
+}
+
+enum event_status {
+  pending
+  paid
+  overdue
+  suggestion
+}
+
+enum event_type {
+  payment
+  goal
+  reminder
+  suggestion
+}
+
+enum language {
+  es
+  en
+}
+
+enum payment_method_type {
+  cash
+  debit_card
+  credit_card
+  transfer
+  other
+}
+
+enum transaction_type {
+  income
+  expense
+}
