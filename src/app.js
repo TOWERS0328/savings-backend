@@ -5,7 +5,10 @@ const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({
+  origin: ['http://localhost:8100', 'http://localhost:4200', process.env.FRONTEND_URL],
+  credentials: true
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
