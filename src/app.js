@@ -13,11 +13,12 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // Rutas
-app.use('/api/auth', require('./modules/auth/auth.routes'));
-
-app.use('/api/transactions', require('./modules/transactions/transactions.routes'));
-
-app.use('/api/categories', require('./modules/categories/categories.routes'));
+app.use('/api/auth',            require('./modules/auth/auth.routes'));
+app.use('/api/transactions',    require('./modules/transactions/transactions.routes'));
+app.use('/api/categories',      require('./modules/categories/categories.routes'));
+app.use('/api/payment-methods', require('./modules/paymentMethods/payment-methods.routes'));
+app.use('/api/tips',            require('./modules/tips/tips.routes'));
+app.use('/api/calendar',        require('./modules/calendar/calendar.routes'));
 
 // Health check
 app.get('/health', (req, res) => {
